@@ -7,45 +7,48 @@ import subprocess
 app = FastAPI()
 
 class AudioRequest(BaseModel):
-    url: str
-    start: int = 0
+    url: str  # ссылка на аудиофайл (mp3, mp4, m4a и т.д.)
+    start: int = 0  # можно реализовать обрезку по времени
     end: int = 0
 
 @app.post("/transcribe/")
 async def transcribe_audio(data: AudioRequest):
     uid = str(uuid.uuid4())
-    mp3_path = f"/tmp/{uid}.mp3"
+    input_path = f"/tmp/{uid}.input"  # универсальное расширение
     wav_path = f"/tmp/{uid}.wav"
 
-    # 1. Скачать mp3 файл
+    # 1. Скачивание аудиофайла по ссылке
     try:
         download_cmd = [
-            "ffmpeg", "-y",
+            "ffmpeg", "-y",           # -y = overwrite
             "-i", data.url,
-            mp3_path
+            input_path
         ]
         subprocess.run(download_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=400, detail=f"ffmpeg download error: {e.stderr.decode()}")
 
-    # 2. Конвертировать в WAV 16kHz mono (если нужно whisper.cpp)
+    # 2. Конвертация в WAV 16kHz mono
     try:
         convert_cmd = [
             "ffmpeg", "-y",
-            "-i", mp3_path,
-            "-ar", "16000",
-            "-ac", "1",
+            "-i", input_path,
+            "-ar", "16000",           # sample rate
+            "-ac", "1",               # mono
             wav_path
         ]
         subprocess.run(convert_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"ffmpeg convert error: {e.stderr.decode()}")
 
-    # 3. TODO: Вставь сюда вызов whisper.cpp, если готов
-    transcription = f"Файл скачан и подготовлен: {uid}.wav"
+    # 3. Здесь в будущем можно вставить вызов whisper.cpp или curl к серверу
+    transcription = f"Файл успешно обработан: {uid}.wav (вставь сюда вызов whisper.cpp)"
 
-    # 4. Очистка
-    os.remove(mp3_path)
-    os.remove(wav_path)
+    # 4. Удаление временных файлов
+    try:
+        os.remove(input_path)
+        os.remove(wav_path)
+    except Exception:
+        pass  # не критично, если удалить не получилось
 
     return {"text": transcription}
