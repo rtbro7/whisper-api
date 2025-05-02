@@ -1,54 +1,53 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import uuid
-import os
 import subprocess
+import os
 
 app = FastAPI()
 
 class AudioRequest(BaseModel):
-    url: str  # ссылка на аудиофайл (mp3, mp4, m4a и т.д.)
-    start: int = 0  # можно реализовать обрезку по времени
-    end: int = 0
+    url: str
 
 @app.post("/transcribe/")
 async def transcribe_audio(data: AudioRequest):
     uid = str(uuid.uuid4())
-    input_path = f"/tmp/{uid}.input"  # универсальное расширение
+    mp4_path = f"/tmp/{uid}.mp4"
     wav_path = f"/tmp/{uid}.wav"
+    txt_path = f"/tmp/{uid}.txt"
 
-    # 1. Скачивание аудиофайла по ссылке
+    # 1. Скачать аудио (поддержка mp3/mp4 ссылок)
     try:
-        download_cmd = [
-            "ffmpeg", "-y",           # -y = overwrite
-            "-i", data.url,
-            input_path
-        ]
-        subprocess.run(download_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", data.url, "-vn", mp4_path],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=400, detail=f"ffmpeg download error: {e.stderr.decode()}")
 
     # 2. Конвертация в WAV 16kHz mono
     try:
-        convert_cmd = [
-            "ffmpeg", "-y",
-            "-i", input_path,
-            "-ar", "16000",           # sample rate
-            "-ac", "1",               # mono
-            wav_path
-        ]
-        subprocess.run(convert_cmd, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", mp4_path, "-ar", "16000", "-ac", "1", wav_path],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"ffmpeg convert error: {e.stderr.decode()}")
 
-    # 3. Здесь в будущем можно вставить вызов whisper.cpp или curl к серверу
-    transcription = f"Файл успешно обработан: {uid}.wav (вставь сюда вызов whisper.cpp)"
+    # 3. Вызов whisper.cpp бинарника
+    try:
+        subprocess.run(
+            ["./main", "-m", "models/ggml-tiny.bin", "-f", wav_path, "-otxt", "-of", txt_path.replace(".txt", "")],
+            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        with open(txt_path, "r") as f:
+            text = f.read()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Whisper error: {str(e)}")
 
     # 4. Удаление временных файлов
-    try:
-        os.remove(input_path)
-        os.remove(wav_path)
-    except Exception:
-        pass  # не критично, если удалить не получилось
+    for file in [mp4_path, wav_path, txt_path]:
+        if os.path.exists(file):
+            os.remove(file)
 
-    return {"text": transcription}
+    return {"text": text}
