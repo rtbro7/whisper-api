@@ -12,11 +12,18 @@ class AudioRequest(BaseModel):
 @app.post("/transcribe/")
 async def transcribe_audio(data: AudioRequest):
     uid = str(uuid.uuid4())
-    mp4_path = f"/tmp/{uid}.mp4"
-    wav_path = f"/tmp/{uid}.wav"
-    txt_path = f"/tmp/{uid}.txt"
+    base_path = f"/tmp/{uid}"
+    mp4_path = base_path + ".mp4"
+    wav_path = base_path + ".wav"
+    txt_path = base_path + ".txt"
+    model_path = "models/ggml-tiny.bin"
 
-    # 1. Скачать аудио (поддержка mp3/mp4 ссылок)
+    if not os.path.exists("./main"):
+        raise HTTPException(status_code=500, detail="whisper.cpp бинарник 'main' не найден")
+    if not os.path.exists(model_path):
+        raise HTTPException(status_code=500, detail="Модель не найдена: models/ggml-tiny.bin")
+
+    # 1. Скачать аудио
     try:
         subprocess.run(
             ["ffmpeg", "-y", "-i", data.url, "-vn", mp4_path],
@@ -25,7 +32,7 @@ async def transcribe_audio(data: AudioRequest):
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=400, detail=f"ffmpeg download error: {e.stderr.decode()}")
 
-    # 2. Конвертация в WAV 16kHz mono
+    # 2. Конвертировать в WAV
     try:
         subprocess.run(
             ["ffmpeg", "-y", "-i", mp4_path, "-ar", "16000", "-ac", "1", wav_path],
@@ -34,20 +41,20 @@ async def transcribe_audio(data: AudioRequest):
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"ffmpeg convert error: {e.stderr.decode()}")
 
-    # 3. Вызов whisper.cpp бинарника
+    # 3. Запуск whisper.cpp
     try:
         subprocess.run(
-            ["./main", "-m", "models/ggml-tiny.bin", "-f", wav_path, "-otxt", "-of", txt_path.replace(".txt", "")],
+            ["./main", "-m", model_path, "-f", wav_path, "-otxt", "-of", base_path],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         with open(txt_path, "r") as f:
             text = f.read()
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Whisper error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"whisper.cpp error: {str(e)}")
 
-    # 4. Удаление временных файлов
-    for file in [mp4_path, wav_path, txt_path]:
-        if os.path.exists(file):
-            os.remove(file)
+    # 4. Очистка временных файлов
+    for path in [mp4_path, wav_path, txt_path]:
+        if os.path.exists(path):
+            os.remove(path)
 
     return {"text": text}
