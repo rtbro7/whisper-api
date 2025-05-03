@@ -13,6 +13,10 @@ class AudioRequest(BaseModel):
 def is_youtube_url(url: str) -> bool:
     return "youtube.com" in url or "youtu.be" in url
 
+@app.get("/")
+async def root():
+    return {"message": "yt-whisper-api is running"}
+
 @app.post("/transcribe/")
 async def transcribe_audio(data: AudioRequest):
     uid = str(uuid.uuid4())
