@@ -8,6 +8,10 @@ app = FastAPI()
 
 class AudioRequest(BaseModel):
     url: str
+    filename: str
+
+def is_youtube_url(url: str) -> bool:
+    return "youtube.com" in url or "youtu.be" in url
 
 @app.post("/transcribe/")
 async def transcribe_audio(data: AudioRequest):
@@ -25,12 +29,18 @@ async def transcribe_audio(data: AudioRequest):
 
     # 1. Скачать аудио
     try:
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", data.url, "-vn", mp4_path],
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        if is_youtube_url(data.url):
+            subprocess.run(
+                ["yt-dlp", "-f", "bestaudio", "-o", mp4_path, data.url],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+        else:
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", data.url, "-vn", mp4_path],
+                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=400, detail=f"ffmpeg download error: {e.stderr.decode()}")
+        raise HTTPException(status_code=400, detail=f"Download error: {e.stderr.decode()}")
 
     # 2. Конвертировать в WAV
     try:
@@ -39,9 +49,9 @@ async def transcribe_audio(data: AudioRequest):
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"ffmpeg convert error: {e.stderr.decode()}")
+        raise HTTPException(status_code=500, detail=f"Convert error: {e.stderr.decode()}")
 
-    # 3. Запуск whisper.cpp
+    # 3. Распознавание
     try:
         subprocess.run(
             ["./main", "-m", model_path, "-f", wav_path, "-otxt", "-of", base_path],
@@ -52,7 +62,7 @@ async def transcribe_audio(data: AudioRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"whisper.cpp error: {str(e)}")
 
-    # 4. Очистка временных файлов
+    # 4. Очистка
     for path in [mp4_path, wav_path, txt_path]:
         if os.path.exists(path):
             os.remove(path)
