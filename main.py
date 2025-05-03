@@ -35,10 +35,10 @@ async def transcribe_audio(data: AudioRequest):
     # 1. Скачать аудио
     try:
         if is_youtube_url(data.url):
-            subprocess.run(
-                ["yt-dlp", "-f", "bestaudio", "-o", mp4_path, data.url],
-                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-            )
+        subprocess.run(
+    ["yt-dlp", "--cookies", "cookies.txt", "-f", "bestaudio", "-o", mp4_path, data.url],
+    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+)
         else:
             subprocess.run(
                 ["ffmpeg", "-y", "-i", data.url, "-vn", mp4_path],
