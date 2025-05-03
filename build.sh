@@ -13,9 +13,9 @@ cmake -B build
 cmake --build build --config Release
 
 # Копируем бинарник main в корень проекта
-if [ -f build/main ]; then
-    cp build/main ../main
+if [ -f build/bin/main ]; then
+  cp build/bin/main ../main
 else
-    echo "❌ Бинарник main не найден!" >&2
-    exit 1
+  echo "❌ Бинарник main не найден!" >&2
+  exit 1
 fi
