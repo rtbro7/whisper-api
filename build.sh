@@ -1,23 +1,21 @@
 #!/bin/bash
 
 # Клонируем whisper.cpp, если его нет
-if [ ! -d "whisper.cpp" ]; then
-  git clone https://github.com/ggerganov/whisper.cpp.git
+if [ ! -d "whisper-cpp" ]; then
+    git clone https://github.com/ggerganov/whisper.cpp.git whisper-cpp
 fi
 
 # Переходим в папку
-cd whisper.cpp
+cd whisper-cpp
 
 # Собираем бинарник
 cmake -B build
 cmake --build build --config Release
 
-# Возвращаемся в корень и копируем бинарник
-cd ..
-
-if [ -f whisper.cpp/build/bin/main ]; then
-  cp whisper.cpp/build/bin/main ./main
+# Копируем бинарник main в корень проекта
+if [ -f build/main ]; then
+    cp build/main ../main
 else
-  echo "❌ Бинарник main не найден!" >&2
-  exit 1
+    echo "❌ Бинарник main не найден!" >&2
+    exit 1
 fi
