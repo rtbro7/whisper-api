@@ -25,8 +25,9 @@ async def transcribe_audio(data: AudioRequest):
     wav_path = base_path + ".wav"
     txt_path = base_path + ".txt"
     model_path = "models/ggml-tiny.bin"
+    main_binary_path = "./whisper.cpp/build/bin/main"
 
-    if not os.path.exists("./main"):
+    if not os.path.exists(main_binary_path):
         raise HTTPException(status_code=500, detail="whisper.cpp бинарник 'main' не найден")
     if not os.path.exists(model_path):
         raise HTTPException(status_code=500, detail="Модель не найдена: models/ggml-tiny.bin")
@@ -58,7 +59,7 @@ async def transcribe_audio(data: AudioRequest):
     # 3. Распознавание
     try:
         subprocess.run(
-            ["./main", "-m", model_path, "-f", wav_path, "-otxt", "-of", base_path],
+            [main_binary_path, "-m", model_path, "-f", wav_path, "-otxt", "-of", base_path],
             check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         with open(txt_path, "r") as f:
