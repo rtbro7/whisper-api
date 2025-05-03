@@ -25,7 +25,7 @@ async def transcribe_audio(data: AudioRequest):
     wav_path = base_path + ".wav"
     txt_path = base_path + ".txt"
     model_path = "models/ggml-tiny.bin"
-    main_binary_path = "./whisper.cpp/build/bin/main"
+    main_binary_path = "./main"
 
     if not os.path.exists(main_binary_path):
         raise HTTPException(status_code=500, detail="whisper.cpp бинарник 'main' не найден")
