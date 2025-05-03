@@ -1,17 +1,15 @@
 #!/bin/bash
 
-# Устанавливаем cmake и компилируем whisper.cpp
-apt-get update && apt-get install -y build-essential cmake git
-
-# Клонируем whisper.cpp, если не клонирован
+# Клонируем whisper.cpp, если его нет
 if [ ! -d "whisper.cpp" ]; then
   git clone https://github.com/ggerganov/whisper.cpp.git
 fi
 
 cd whisper.cpp
+
+# Собираем бинарник
 cmake -B build
 cmake --build build --config Release
 
-# Копируем бинарник
-cp build/bin/main ../main
-chmod +x ../main
+# Копируем бинарник main в корень проекта
+cp build/bin/main ../
