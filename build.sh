@@ -12,9 +12,11 @@ cd whisper.cpp
 cmake -B build
 cmake --build build --config Release
 
-# Копируем бинарник main в корень проекта
-if [ -f build/bin/main ]; then
-  cp build/bin/main ../main
+# Возвращаемся в корень и копируем бинарник
+cd ..
+
+if [ -f whisper.cpp/build/bin/main ]; then
+  cp whisper.cpp/build/bin/main ./main
 else
   echo "❌ Бинарник main не найден!" >&2
   exit 1
