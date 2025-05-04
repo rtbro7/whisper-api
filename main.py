@@ -34,16 +34,21 @@ async def transcribe_audio(data: AudioRequest):
 
     # 1. Скачать аудио
     try:
+        print("Текущие файлы в директории:", os.listdir("."))
+
         if is_youtube_url(data.url):
             subprocess.run(
-print("Текущие файлы в директории:", os.listdir("."))
-subprocess.run(
-    ["yt-dlp", "--cookies", "cookies.txt", "-f", "bestaudio", "-o", mp4_path, data.url],
-    check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-)        else:
+                ["yt-dlp", "--cookies", "cookies.txt", "-f", "bestaudio", "-o", mp4_path, data.url],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+        else:
             subprocess.run(
                 ["ffmpeg", "-y", "-i", data.url, "-vn", mp4_path],
-                check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
             )
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=400, detail=f"Download error: {e.stderr.decode()}")
@@ -52,7 +57,9 @@ subprocess.run(
     try:
         subprocess.run(
             ["ffmpeg", "-y", "-i", mp4_path, "-ar", "16000", "-ac", "1", wav_path],
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"Convert error: {e.stderr.decode()}")
@@ -61,7 +68,9 @@ subprocess.run(
     try:
         subprocess.run(
             [main_binary_path, "-m", model_path, "-f", wav_path, "-otxt", "-of", base_path],
-            check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
         )
         with open(txt_path, "r") as f:
             text = f.read()
