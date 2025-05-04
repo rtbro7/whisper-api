@@ -32,13 +32,13 @@ async def transcribe_audio(data: AudioRequest):
     if not os.path.exists(model_path):
         raise HTTPException(status_code=500, detail="Модель не найдена: models/ggml-tiny.bin")
 
-    # 1. Скачать аудио
+    # 1. Скачать аудио/видео
     try:
         print("Текущие файлы в директории:", os.listdir("."))
 
         if is_youtube_url(data.url):
             subprocess.run(
-                ["yt-dlp", "--cookies", "cookies.txt", "-f", "bestaudio", "-o", mp4_path, data.url],
+                ["yt-dlp", "--cookies", "cookies.txt", "-f", "18", "-o", mp4_path, data.url],
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
@@ -51,7 +51,7 @@ async def transcribe_audio(data: AudioRequest):
                 stderr=subprocess.PIPE
             )
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=400, detail=f"Download error: {e.stderr.decode()}")
+        raise HTTPException(status_code=400, detail=f"Download error: {e.stderr.decode(errors='ignore')}")
 
     # 2. Конвертировать в WAV
     try:
@@ -62,9 +62,9 @@ async def transcribe_audio(data: AudioRequest):
             stderr=subprocess.PIPE
         )
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Convert error: {e.stderr.decode()}")
+        raise HTTPException(status_code=500, detail=f"Convert error: {e.stderr.decode(errors='ignore')}")
 
-    # 3. Распознавание
+    # 3. Распознавание речи
     try:
         subprocess.run(
             [main_binary_path, "-m", model_path, "-f", wav_path, "-otxt", "-of", base_path],
