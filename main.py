@@ -36,9 +36,13 @@ async def transcribe_audio(data: AudioRequest):
     try:
         print("Текущие файлы в директории:", os.listdir("."))
 
-        if is_youtube_url(data.url):
-            subprocess.run(
-                ["yt-dlp", "--cookies", "cookies.txt", "-f", "bestaudio", "-o", mp4_path, data.url],
+       if is_youtube_url(data.url):
+    subprocess.run(
+        ["yt-dlp", "--cookies", "cookies.txt", "-f", "bestaudio", "-o", mp4_path, data.url],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE
